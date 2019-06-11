@@ -35,7 +35,7 @@ def read_beliefs_from_csv(sensor, source, event_resolution: timedelta = None, tz
 
 
 # Create source and sensors
-source_a = tb.BeliefSource(name="KNMI")
+source_a = tb.BeliefSource(name="Test")
 sensors = (tb.Sensor(name=descr[0], unit=descr[1], event_resolution=timedelta(minutes=15)) for descr in sensor_descriptions)
 
 # Create BeliefsDataFrame
