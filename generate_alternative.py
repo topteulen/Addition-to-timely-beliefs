@@ -4,9 +4,9 @@ import math
 import numpy as np
 from sklearn.linear_model import LinearRegression
 
-def generator(csv_in,current_time,model=LinearRegression()):
+def get_observation(csv_in,current_time):
     """
-    Generates a new forecast at a given time using a model
+    Returns observation at given datetime
 
     @param csv_in : csv file containing all forecast data
     @param current_time : datetime string to observe
@@ -16,13 +16,23 @@ def generator(csv_in,current_time,model=LinearRegression()):
         csv_reader = csv.reader(csv_file, delimiter=',')
         data = list(csv_reader)[1:]
     index = get_row(current_time,data)
-    observation = float(data[index][1])
+    return float(data[index][1])
+
+def generator(csv_in, current_time, model=LinearRegression()):
+    """
+    Generates a new forecast at a given time using a model
+
+    @param csv_in : csv file containing all forecast data
+    @param current_time : datetime string to observe
+    @param model : model to use to generate new data 
+    """
+    observation = get_observation(csv_in, current_time)
     if str(type(model)) == "<class 'sklearn.linear_model.base.LinearRegression'>":
         X = np.array([[1], [2], [3], [4]]) # placeholder
         model.fit(X,X)
         return model.predict(np.array([[observation]]))[0]
     print("Other model functionality has not yet been implemented")
-    return observation
+    return list(observation)
 
 
 #input current_time &datetime string
