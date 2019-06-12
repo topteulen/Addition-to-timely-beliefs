@@ -1,5 +1,3 @@
 # Addition-to-timely-beliefs
-this repository will feature an addition to the timely beliefs forecasting package.
-this is the devlop branch!
-This is nienke
-This is it
+This repository will feature an addition to the timely beliefs forecasting package.
+This is the develop branch for the ridgeline plot.
