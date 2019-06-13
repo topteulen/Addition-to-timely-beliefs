@@ -8,35 +8,29 @@ from timely_beliefs.beliefs.utils import load_time_series
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 
-def get_observation(csv_in,current_time):
+def get_observation(data,current_time):
     """
     Returns observation at given datetime
 
-    @param csv_in : csv file containing all forecast data
+    @param data : python list or array containing all forecast data
     @param current_time : datetime string to observe
-    @param model : model to use to generate new data
     """
-    #open data file
-    with open(csv_in) as csv_file:
-        csv_reader = csv.reader(csv_file, delimiter=',')
-        data = list(csv_reader)[1:]
-    #get index
-    index = get_row(current_time,data)
     #get obeservation from data
+    index = get_row(current_time,data)
     return float(data[index][1])
 
-def generator(csv_in, current_time, model):
+def generator(data, current_time, model):
     """
     Generates a new forecast at a given time using a model
 
-    @param csv_in : csv file containing all forecast data
+    @param data : python list or array containing all forecast data
     @param current_time : datetime string
     @param model : model to use to generate new data
     """
     #get observation
-    observation = get_observation(csv_in, current_time)
+    observation = get_observation(data, current_time)
     #check if model is linear_regression
-    if str(type(model)) == "<class 'sklearn.linear_model.base.LinearRegression'>":
+    if isinstance(model, LinearRegression):
         X = np.array([[1], [2], [3], [4]]) # placeholder
         model.fit(X,X)
         return model.predict(np.array([[observation]]))[0][0]
@@ -73,7 +67,7 @@ def main(csv_in,current_time,start_time,last_start_time,model=LinearRegression()
         result = []
         #loops over all time steps
         for index in index_list:
-            value = generator(csv_in, current_time, model)
+            value = generator(data, current_time, model)
             result += [[data[index][0],data[index_current][0],'Test',0.5,value]]
             #changes values in data list if addtocsv is on
             if addtocsv == True:
@@ -89,7 +83,6 @@ def main(csv_in,current_time,start_time,last_start_time,model=LinearRegression()
         with open(csv_in, 'w') as csvfile:
             writer = csv.writer(csvfile, delimiter=',')
             writer.writerows(datacomp)
-    remove('temp.csv')
     return t
 
 
@@ -103,6 +96,7 @@ def get_row(current_time,data):
     """
     #convert string to datetime object for comparing
     datetime_object = datetime.datetime.strptime(current_time,'%Y-%m-%d %H:%M:%S')
+    print(datetime_object)
     #set left and right halfs
     L = 0
     R = len(data) - 1
@@ -115,6 +109,9 @@ def get_row(current_time,data):
             break
         lastindex = index
         #if time found return
+        print(data[index][0][:-6])
+        print(index)
+        print('.')
         if datetime.datetime.strptime(data[index][0][:-6],'%Y-%m-%d %H:%M:%S') == datetime_object:
             break
         elif datetime.datetime.strptime(data[index][0][:-6],'%Y-%m-%d %H:%M:%S') > datetime_object:
@@ -122,6 +119,7 @@ def get_row(current_time,data):
                 R = index - 1
         else:
             L = index + 1
+    print()
     return index
 
 csv_file = 'temperature-linear_regressor-0.5.csv'

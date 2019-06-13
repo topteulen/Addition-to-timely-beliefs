@@ -36,7 +36,7 @@ def generator(csv_in, current_time, model):
     #get observation
     observation = get_observation(csv_in, current_time)
     #check if model is linear_regression
-    if str(type(model)) == "<class 'sklearn.linear_model.base.LinearRegression'>":
+    if isinstance(model, LinearRegression):
         X = np.array([[1], [2], [3], [4]]) # placeholder
         model.fit(X,X)
         return model.predict(np.array([[observation]]))[0][0]
