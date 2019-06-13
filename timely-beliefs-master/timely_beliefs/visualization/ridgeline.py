@@ -12,7 +12,7 @@ import scipy.stats as stats
 import pandas as pd
 
 
-def ridgeline_plot(date, csv_005, csv_05, csv_095, output=False, start=0, end=168):
+def ridgeline_plot(date, csv_05, csv_095, output=False, start=0, end=168):
     """ 
     Creates rigdeline plot 
 
@@ -23,6 +23,10 @@ def ridgeline_plot(date, csv_005, csv_05, csv_095, output=False, start=0, end=16
     @param output : if true write to output png file
     @param interval : to be added
     """
+    if end < 0 or end > 168:
+        end = 168
+    if start < 0 or start > end:
+        start = 0
     start_index = start + 2
     end_index = end + 2
     data_05 = create_data(csv_05)
@@ -37,17 +41,18 @@ def ridgeline_plot(date, csv_005, csv_05, csv_095, output=False, start=0, end=16
     nr_lines = end_index - start_index
 
     show_plot(mean, sigma, nr_lines)
-    return mean, sigma
+
 
 
 def show_plot(mean, sigma, nr_lines):
     """
-    Creates and shows ridgline plot
-    
-    @param mean : list of mean values
-    @param sigmaa : list of sigma values
-    @param nr_lines : number of pdfs to be drawn
+    Creates and shows ridgeline plot
+
+    @param mean: list of mean values
+    @param sigma: list of sigma values
+    @param nr_lines: number of pdfs to be drawn
     """
+
     x = np.linspace(-10, 70, 500)
     frame = pd.DataFrame()
     for i in range(nr_lines):
@@ -57,10 +62,10 @@ def show_plot(mean, sigma, nr_lines):
     pallete = viridis(nr_lines)
     source = ColumnDataSource(data=dict(x=x))
 
-    p = figure(y_range=cats, plot_width=900, x_range=(-5, 60), toolbar_location=None)
+    p = figure(y_range=cats, plot_width=900, x_range=(-5, 50), toolbar_location=None)
 
     for i, cat in enumerate(reversed(cats)):
-        y = ridge(cat, frame[cat])
+        y = ridge(cat, frame[cat], nr_lines)
         source.add(y, cat)
         p.patch('x', cat, alpha=0.6, color=pallete[i], line_color="black", source=source)
 
@@ -123,4 +128,4 @@ def create_data(csv_in):
     return data
 
 
-# ridgeline_plot('2015-06-16 10:30:00', 'temperature-random_forest-0.05.csv', 'temperature-random_forest-0.5.csv', 'temperature-random_forest-0.95.csv')
+# ridgeline_plot('2015-06-16 10:30:00', 'temperature-random_forest-0.5.csv', 'temperature-random_forest-0.95.csv')
