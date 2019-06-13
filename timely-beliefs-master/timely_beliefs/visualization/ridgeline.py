@@ -15,13 +15,13 @@ import pandas as pd
 def ridgeline_plot(date, csv_05, csv_095, output=False, start=0, end=168):
     """ 
     Creates rigdeline plot 
-
+    
     @param date : datetime string
-    @param csv_005 : input csv file with 5 percent probability
     @param csv_05 : input csv file with 50 percent probability
     @param csv_095 : input csv file with 95 percent probability
     @param output : if true write to output png file
-    @param interval : to be added
+    @param start : from which hour to show the ridgeline   
+    @param end : to which hour to show the ridgeline
     """
     if end < 0 or end > 168:
         end = 168
@@ -41,7 +41,6 @@ def ridgeline_plot(date, csv_05, csv_095, output=False, start=0, end=168):
     nr_lines = end_index - start_index
 
     show_plot(mean, sigma, nr_lines)
-
 
 
 def show_plot(mean, sigma, nr_lines):
