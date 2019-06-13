@@ -12,7 +12,7 @@ import scipy.stats as stats
 import pandas as pd
 
 
-def ridgeline_plot(date, csv_005, csv_05, csv_095, output=False, interval='default'):
+def ridgeline_plot(date, csv_005, csv_05, csv_095, output=False, start=0, end=168):
     """ 
     Creates rigdeline plot 
 
@@ -23,51 +23,63 @@ def ridgeline_plot(date, csv_005, csv_05, csv_095, output=False, interval='defau
     @param output : if true write to output png file
     @param interval : to be added
     """
-
+    start_index = start + 2
+    end_index = end + 2
     data_05 = create_data(csv_05)
     data_095 = create_data(csv_095)
     index_05 = get_row(date, data_05)
     index_095 = get_row(date, data_095)
-    pred_temp_05 = data_05[index_05][2:168]
-    pred_temp_095 = data_095[index_095][2:168]
+    pred_temp_05 = data_05[index_05][start_index:end_index]
+    pred_temp_095 = data_095[index_095][start_index:end_index]
     mean = np.array([float(i) for i in pred_temp_05])
     sigma = np.array([float(i) / 4 for i in pred_temp_095])
 
+    nr_lines = end_index - start_index
+
+    show_plot(mean, sigma, nr_lines)
+    return mean, sigma
+
+
+def show_plot(mean, sigma, nr_lines):
+    """
+    Creates and shows ridgline plot
+    
+    @param mean : list of mean values
+    @param sigmaa : list of sigma values
+    @param nr_lines : number of pdfs to be drawn
+    """
     x = np.linspace(-10, 70, 500)
     frame = pd.DataFrame()
-    for i in range(166):
+    for i in range(nr_lines):
         frame["{}".format(i)] = stats.norm.pdf(x, mean[i], sigma[i])
-    if output:
-        output_file("ridgeplot.png")
 
     cats = list(reversed(frame.keys()))
-    pallete = viridis(100)
+    pallete = viridis(nr_lines)
     source = ColumnDataSource(data=dict(x=x))
 
-    fig = figure(y_range=cats, plot_width=900, x_range=(-5, 50), toolbar_location=None)
+    p = figure(y_range=cats, plot_width=900, x_range=(-5, 60), toolbar_location=None)
 
     for i, cat in enumerate(reversed(cats)):
         y = ridge(cat, frame[cat])
         source.add(y, cat)
-        fig.patch('x', cat, alpha=0.6, color=pallete[i], line_color="black", source=source)
+        p.patch('x', cat, alpha=0.6, color=pallete[i], line_color="black", source=source)
 
-    fig.outline_line_color = None
-    fig.background_fill_color = "#ffffff"
+    p.outline_line_color = None
+    p.background_fill_color = "#ffffff"
 
-    fig.xaxis.ticker = FixedTicker(ticks=list(range(0, 101, 10)))
+    p.xaxis.ticker = FixedTicker(ticks=list(range(0, 101, 10)))
 
-    fig.ygrid.grid_line_color = None
-    fig.xgrid.grid_line_color = "#000000"
-    fig.xgrid.ticker = p.xaxis[0].ticker
+    p.ygrid.grid_line_color = None
+    p.xgrid.grid_line_color = "#000000"
+    p.xgrid.ticker = p.xaxis[0].ticker
 
-    fig.axis.minor_tick_line_color = None
-    fig.axis.major_tick_line_color = None
-    fig.axis.axis_line_color = None
-    fig.yaxis.visible = None
+    p.axis.minor_tick_line_color = None
+    p.axis.major_tick_line_color = None
+    p.axis.axis_line_color = None
+    p.yaxis.visible = None
+    p.y_range.range_padding = 0.2
 
-    fig.y_range.range_padding = 0.12
-
-    show(fig)
+    show(p)
 
 
 def ridge(category, data, scale=100):
@@ -111,5 +123,4 @@ def create_data(csv_in):
     return data
 
 
-# ridgeline_plot('2015-06-16 10:30:00', 'temperature-random_forest-0.05.csv',
-                             'temperature-random_forest-0.5.csv', 'temperature-random_forest-0.95.csv')
+# ridgeline_plot('2015-06-16 10:30:00', 'temperature-random_forest-0.05.csv', 'temperature-random_forest-0.5.csv', 'temperature-random_forest-0.95.csv')
