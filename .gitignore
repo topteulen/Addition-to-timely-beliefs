@@ -1,3 +1,6 @@
 temperature-linear_regressor-0.5.csv
+temperature-random_forest-0.05.csv
+temperature-random_forest-0.5.csv
+temperature-random_forest-0.95.csv
 test.py
 generate_old.py
