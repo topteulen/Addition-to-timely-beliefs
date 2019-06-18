@@ -83,6 +83,7 @@ def main(csv_in,current_time,start_time,last_start_time,model=LinearRegression()
         with open(csv_in, 'w') as csvfile:
             writer = csv.writer(csvfile, delimiter=',')
             writer.writerows(datacomp)
+    remove('temp.csv')
     return t
 
 
@@ -109,9 +110,6 @@ def get_row(current_time,data):
             break
         lastindex = index
         #if time found return
-        print(data[index][0][:-6])
-        print(index)
-        print('.')
         if datetime.datetime.strptime(data[index][0][:-6],'%Y-%m-%d %H:%M:%S') == datetime_object:
             break
         elif datetime.datetime.strptime(data[index][0][:-6],'%Y-%m-%d %H:%M:%S') > datetime_object:
@@ -119,9 +117,8 @@ def get_row(current_time,data):
                 R = index - 1
         else:
             L = index + 1
-    print()
     return index
 
 csv_file = 'temperature-linear_regressor-0.5.csv'
-h = main(csv_file,"2015-05-16 09:14:01","2015-05-20 09:14:00","2015-05-20 09:30:00",addtocsv=False)
+h = main(csv_file,"2015-05-16 09:14:01","2015-05-20 09:14:00","2015-05-20 16:30:00",addtocsv=False)
 print(h)
