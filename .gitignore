@@ -1,3 +1,9 @@
 temperature-linear_regressor-0.5.csv
 test.py
 generate_old.py
+temperature-random_forest-0.05.csv
+temperature-random_forest-0.5.csv
+temperature-random_forest-0.95.csv
+energy_data.csv
+testing_seita_notebook2.ipynb
+ipynb_checkpoints

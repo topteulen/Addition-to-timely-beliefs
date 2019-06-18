@@ -10,16 +10,12 @@ n_events = 4 * 24# * 7  # For playing around fast we will read in beliefs only a
 tz_hour_difference = -9  # For sake of simplicity, let's pretend the data was measured in a UTC timezone
 
 sensor_descriptions = (
-    ("Solar irradiation", "kW/m²"),
-    ("Solar power", "kW"),
-    ("Wind speed", "m/s"),
-    ("Wind power", "MW"),
     ("Temperature", "°C"),
 )
 
 
 def read_beliefs_from_csv(sensor, source, event_resolution: timedelta = None, tz_hour_difference: float = 0, n_events: int = None) -> list:
-    beliefs = pd.read_csv("../energy_data.csv",
+    beliefs = pd.read_csv("energy_data.csv",
                           index_col=0, parse_dates=[0],
                           date_parser=lambda col : pd.to_datetime(col, utc=True) - timedelta(hours=tz_hour_difference),
                           nrows=n_events, usecols=["datetime", sensor.name.replace(' ', '_').lower()])
@@ -35,11 +31,13 @@ def read_beliefs_from_csv(sensor, source, event_resolution: timedelta = None, tz
 
 
 # Create source and sensors
-source_a = tb.BeliefSource(name="Test")
+source_a = tb.BeliefSource(name="KNMI")
 sensors = (tb.Sensor(name=descr[0], unit=descr[1], event_resolution=timedelta(minutes=15)) for descr in sensor_descriptions)
 
 # Create BeliefsDataFrame
 for sensor in sensors:
     blfs = read_beliefs_from_csv(sensor, source=source_a, tz_hour_difference=tz_hour_difference, n_events=n_events)
     df = tb.BeliefsDataFrame(sensor=sensor, beliefs=blfs).sort_index()
-    print(df)
+    #print(df)
+    df.keys()
+    #df['2015-05-16 09:14:01+00:00']
