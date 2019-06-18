@@ -11,9 +11,7 @@ import math
 import numpy as np
 import scipy.stats as stats
 import pandas as pd
-import matplotlib.pyplot as plt
 
-output_file("hep.html")
 
 def ridgeline_plot(date, csv_005, csv_05, csv_095, output=False, start=0, end=168):
     """ 
