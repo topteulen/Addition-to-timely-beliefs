@@ -1,2 +1,3 @@
 # Addition-to-timely-beliefs
-this repository will feature an addition to the timely beliefs forecasting package.
+This repository will feature an addition to the timely beliefs forecasting package.
+This is the develop branch for generating and adding new forecasts.
