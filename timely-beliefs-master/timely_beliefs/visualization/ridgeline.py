@@ -1,44 +1,129 @@
-from bokeh.io import output_file, show
-from bokeh.models import ColumnDataSource, FixedTicker, PrintfTickFormatter, LinearColorMapper, ColorBar, FuncTickFormatter
+from datetime import datetime, timedelta
+from timely_beliefs.beliefs.utils import load_time_series
+from scipy.special import erfinv
+from bokeh.palettes import viridis
+from bokeh.io import show
+from bokeh.models import ColumnDataSource, FixedTicker, FuncTickFormatter
 from bokeh.models import SingleIntervalTicker, LinearAxis
 from bokeh.plotting import figure
-from bokeh.sampledata.perceptions import probly
-from bokeh.palettes import viridis
-from scipy.special import erfinv
+import time, pickle
 import datetime
-import csv
-import math
+import pytz
+import isodate
+import pandas as pd
+import timely_beliefs as tb
 import numpy as np
 import scipy.stats as stats
-import pandas as pd
 
 
-def ridgeline_plot(date, csv_005, csv_05, csv_095, output=False, start=0, end=168):
+def read_beliefs_from_csv(sensor, source, cp, event_resolution: timedelta, tz_hour_difference: float = 0) -> list:
+    """
+    Returns a timely_beliefs DataFrame read from a csv file
+    
+    @param sensor : sensor used
+    @param source : type of model used
+    @param cp : cummulative probability
+    @param event_resolution : event resolution in timedelta hours
+    @param tz_hour_difference : time difference 
+    """
+    sensor_descriptions = (("Temperature", "C"),)
+
+    cols = [0, 1]  # Columns with datetime index and observed values
+    horizons = list(range(0, 169, 1)) 
+    cols.extend([h + 2 for h in horizons])
+    n_horizons = 169
+    n_events = 100
+    beliefs = pd.read_csv("%s-%s-%s.csv" % (sensor.name.replace(' ', '_').lower(), source.name.replace(' ', '_').lower(), cp),
+                          index_col=0, parse_dates=[0], date_parser=lambda col: pd.to_datetime(col, utc=True) - timedelta(hours=tz_hour_difference),
+                          nrows=n_events, usecols=cols)
+    beliefs = beliefs.resample(event_resolution).mean()
+    assert beliefs.index.tzinfo == pytz.utc
+    # Construct the BeliefsDataFrame by looping over the belief horizons
+    blfs = load_time_series(beliefs.iloc[:, 0].head(n_events), sensor=sensor, source=source,
+                            belief_horizon=timedelta(hours=0), cumulative_probability=0.5)  # load the observations (keep cp=0.5)
+    for h in beliefs.iloc[:, 1 :n_horizons + 1] :
+        try:
+            blfs += load_time_series(beliefs[h].head(n_events), sensor=sensor, source=source,
+                                     belief_horizon=(isodate.parse_duration(
+                                     "PT%s" % h)) + event_resolution, cumulative_probability=cp)  # load the forecasts
+        except isodate.isoerror.ISO8601Error:  # In case of old headers that don't yet follow the ISO 8601 standard
+            blfs += load_time_series(beliefs[h].head(n_events), sensor=sensor, source=source,
+                                     belief_horizon=(isodate.parse_duration(
+                                     "%s" % h)) + event_resolution, cumulative_probability=cp)  # load the forecasts
+    return blfs
+
+def make_df(n_events = 100 , n_horizons = 169, tz_hour_difference=-9, event_resolution= timedelta(hours=1)):
+    """
+    Returns DataFrame
+    
+    @param n_events : number of events in DataFrame
+    @param n_horizons : number of horizons in DataFrame
+    @param tz_hour_difference : time difference 
+    @param event_resolution : event resolution in timedelta hours
+    """
+    sensor_descriptions = (("Temperature", "C"),)
+
+    source = tb.BeliefSource(name="Random forest")
+
+    sensors = (tb.Sensor(name=descr[0], unit=descr[1], event_resolution=event_resolution) for descr in sensor_descriptions)
+    blfs=[]
+    for sensor in sensors:
+        blfs += read_beliefs_from_csv(sensor, source=source, cp=0.05, event_resolution=event_resolution, tz_hour_difference=tz_hour_difference)
+        blfs += read_beliefs_from_csv(sensor, source=source, cp=0.5, event_resolution=event_resolution, tz_hour_difference=tz_hour_difference)
+        blfs += read_beliefs_from_csv(sensor, source=source, cp=0.95, event_resolution=event_resolution, tz_hour_difference=tz_hour_difference)
+
+        bdf = tb.BeliefsDataFrame(sensor=sensor, beliefs=blfs).sort_index()
+
+    return bdf
+
+def create_cp_data(df, first_belief_time, last_belief_time, start_time):
+    """
+    Returns lists with values of 0.05, 0.5 and 0.95 cumulative probability
+    
+    @param df : DataFrame containing events, belief times, predictions and their cumulative probability
+    @param first_belief_time : first belief time 
+    @param last_belief_time : last belief time 
+    @param start_time : time of event
+    """
+    temp_time = first_belief_time
+    list_005 = []
+    list_05 = []
+    list_95 = []
+    while temp_time <= last_belief_time:
+        list_005  +=  [get_beliefsSeries_from_event_start(df, start_time, temp_time)[0]]
+        list_05 +=  [get_beliefsSeries_from_event_start(df, start_time, temp_time)[1]]
+        list_95 +=  [get_beliefsSeries_from_event_start(df, start_time, temp_time)[2]]
+ 
+        temp_time += df.sensor.event_resolution
+    return (list_005, list_05, list_95)
+
+
+def get_beliefsSeries_from_event_start(df, datetime_object,current_time):
+    return df.loc[(datetime_object.strftime("%m/%d/%Y, %H:%M:%S"),current_time.strftime("%m/%d/%Y, %H:%M:%S")),'event_value']
+
+
+
+def ridgeline_plot(date, df, start=0, end=168):
     """ 
     Creates rigdeline plot 
 
     @param date : datetime string
-    @param csv_005 : input csv file with 5 percent probability
-    @param csv_05 : input csv file with 50 percent probability
-    @param csv_095 : input csv file with 95 percent probability
-    @param output : if true write to output png file
-    @param interval : to be added
+    @param df : timely_beliefs DataFrame
+    @param start : start of hours before event time
+    @param end : end of hours before event time
     """
     if end < 0 or end > 168:
-        raise ValueException("Forecast horizon must be between 0 and 168 hours.")
+        raise ValueException("End of the forecast horizon must be between 0 and 168 hours.")
     if start < 0 or start > end:
-        raise ValueException("Forecast horizon must be between 0 and 168 hours.")
+        raise ValueException("Start of the forecast horizon must be between 0 and 168 hours.")
     start_index = start + 2
     end_index = end + 2
-    data_005 = create_data(csv_005)
-    data_05 = create_data(csv_05)
-    data_095 = create_data(csv_095)
-    index_005 = get_row(date, data_005)
-    index_05 = get_row(date, data_05)
-    index_095 = get_row(date, data_095)
-    pred_temp_005 = data_005[index_005][start_index:end_index]
-    pred_temp_05 = data_05[index_05][start_index:end_index]
-    pred_temp_095 = data_095[index_095][start_index:end_index]
+
+    start_time = date
+    first_belief_time = date - ((end-1)*df.sensor.event_resolution)
+    last_belief_time = date - ((start)*df.sensor.event_resolution)
+
+    pred_temp_005, pred_temp_05, pred_temp_095 = create_cp_data(df,first_belief_time,last_belief_time,start_time)
     
     mean = np.array([float(i) for i in pred_temp_05])
     sigma1 = np.array([(float(pred_temp_095[i])-float(pred_temp_05[i]))/(np.sqrt(2)*erfinv((2*0.95)-1)) for i in range(len(pred_temp_05))])
@@ -62,7 +147,7 @@ def show_plot(mean, sigma, start, end):
     frame = pd.DataFrame()
     for i in range(nr_lines):
         frame["{}".format(i)] = stats.norm.pdf(x, mean[i], sigma[i])
-    cats = list(frame.keys())
+    cats = list(reversed(frame.keys()))
     pallete = viridis(nr_lines)
     source = ColumnDataSource(data=dict(x=x))
 
@@ -89,7 +174,7 @@ def show_plot(mean, sigma, start, end):
     p.y_range.range_padding = 0.2 / (nr_lines / 168)
     
     p.yaxis.axis_label = 'Number of hours before event-time'
-    y_ticks = list(np.arange(0, end, 5)) # Ridgeline index, multiples of 10
+    y_ticks = list(np.arange(end, 0, -5)) 
     yaxis = LinearAxis(ticker=y_ticks)
     
     y_labels = list(np.arange(start, end, 5))
@@ -105,43 +190,6 @@ def show_plot(mean, sigma, start, end):
 def ridge(category, data, scale=100):
     return list(zip([category] * len(data), scale * data))
 
+# df = make_df()
+# ridgeline_plot(datetime.datetime(2015, 3, 1, 9, 0, tzinfo=pytz.utc), df)
 
-def get_row(current_time, data):
-    """
-    Returns index of current_time in data
-
-    @param current_time : datetime string to be searched
-    @param data : read csv file
-    """
-    datetime_object = datetime.datetime.strptime(current_time, '%Y-%m-%d %H:%M:%S')
-    L = 0
-    R = len(data) - 1
-    lastindex = 0
-    while(True):
-        index = math.floor((L + R) / 2)
-        if index == lastindex:
-            break
-        lastindex = index
-        if datetime.datetime.strptime(data[index][0][:-6], '%Y-%m-%d %H:%M:%S') == datetime_object:
-            break
-        elif datetime.datetime.strptime(data[index][0][:-6], '%Y-%m-%d %H:%M:%S') > datetime_object:
-            R = index - 1
-        else:
-            L = index + 1
-    return index
-
-
-def create_data(csv_in):
-    """
-    Returns data as list type
-
-    @param csv_in : input csv file  
-    """
-    with open(csv_in) as csv_file:
-        csv_reader = csv.reader(csv_file, delimiter=',')
-        data = list(csv_reader)
-    return data
-
-
-ridgeline_plot('2015-06-16 10:30:00', 'temperature-random_forest-0.05.csv',
-                             'temperature-random_forest-0.5.csv', 'temperature-random_forest-0.95.csv', start=20, end=83)
