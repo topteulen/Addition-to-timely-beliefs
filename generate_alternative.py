@@ -1,4 +1,3 @@
-import csv
 from os import remove
 import datetime
 import pytz
