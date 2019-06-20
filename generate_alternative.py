@@ -49,12 +49,11 @@ def generator(df, beliefSeries, model):
 
     # check if model is linear_regression
     if isinstance(model, LinearRegression):
-        X = np.array([[1], [2], [3], [4]]) # placeholder
+        X = np.array([[1], [2], [3], [4]]) # placeholder, takes one point only
         model.fit(X,X)
         return model.predict(np.array([[beliefSeries[0]]]))[0][0]
     # error message
-    print("This model functionality has not yet been implemented/ Did you pass the correct model?")
-    return observation
+    raise NotImplementedError("This model functionality has not yet been implemented/ Did you pass the correct model?")
 
 def get_beliefsSeries_from_event_start(df,datetime_object,current_time,value):
     return df.loc[datetime_object.strftime("%m/%d/%Y, %H:%M:%S"),value]
@@ -63,7 +62,7 @@ def get_beliefsSeries_from_event_start_str(datetime_str,current_time):
     return df.loc[(datetime_str,current_time),'event_value']
 
 
-def main(df, current_time, start_time, last_start_time=None, model=LinearRegression(), value='event_value'):
+def main(df, current_time, start_time, last_start_time=None, model=LinearRegression()):
     """
     Accepts a Beliefs Dataframe df and returns forecasts from start_time to last_start_time in timely beliefs rows
 
@@ -80,12 +79,12 @@ def main(df, current_time, start_time, last_start_time=None, model=LinearRegress
     last_date = df.iloc[-1].name[0]
     # check if current time is in data frame
     if current_time < first_date or current_time > last_date :
-        raise SystemExit('Error: your current_time is not in the dataframe')
+        raise ValueError('Your current_time is not in the dataframe')
 
     # get beliefseries from all the times
-    current = get_beliefsSeries_from_event_start(df,current_time,current_time,value)
-    start = get_beliefsSeries_from_event_start(df,start_time,current_time,value)
-    last_start = get_beliefsSeries_from_event_start(df,last_start_time,current_time,value)
+    current = get_beliefsSeries_from_event_start(df,current_time,current_time, 'event_value')
+    start = get_beliefsSeries_from_event_start(df,start_time,current_time, 'event_value')
+    last_start = get_beliefsSeries_from_event_start(df,last_start_time,current_time, 'event_value')
 
     # create list of beliefSeries
     beliefSeries_list = [start.copy()]
@@ -107,22 +106,20 @@ def main(df, current_time, start_time, last_start_time=None, model=LinearRegress
             )]
         else:
             beliefSeries_list += [get_beliefsSeries_from_event_start(temp_time,current_time).copy()]
-            print(temp_time)
-            print(current_time)
-            print(get_beliefsSeries_from_event_start(temp_time,current_time).copy())
+        
         temp_time += df.sensor.event_resolution
 
     print(beliefSeries_list)
     df_1 = tb.BeliefsDataFrame(sensor=df.sensor, beliefs=blfs_list)
    
-    #loops over all time steps
+    # loops over all time steps
     for beliefSeries in beliefSeries_list:
         if beliefSeries.empty == False:
             beliefSeries[0] = generator(df, current, model)
 
-    temp = beliefSeries_list[0].to_frame(name=value)
+    temp = beliefSeries_list[0].to_frame(name='event_value')
     for i in range(len(beliefSeries_list)-2):
-        temp = temp.append(beliefSeries_list[i+2].to_frame(name=value))
+        temp = temp.append(beliefSeries_list[i+2].to_frame(name='event_value'))
     df_1 = temp.append(df_1)
 
     return df_1
