@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from timely_beliefs.beliefs.utils import load_time_series
 from scipy.special import erfinv
 from bokeh.palettes import viridis
-from bokeh.io import show
+from bokeh.io import show, export_png
 from bokeh.models import ColumnDataSource, FixedTicker, FuncTickFormatter
 from bokeh.models import SingleIntervalTicker, LinearAxis
 from bokeh.plotting import figure
@@ -32,7 +32,7 @@ def read_beliefs_from_csv(sensor, source, cp, event_resolution: timedelta, tz_ho
     horizons = list(range(0, 169, 1)) 
     cols.extend([h + 2 for h in horizons])
     n_horizons = 169
-    n_events = 100
+    n_events = None
     beliefs = pd.read_csv("%s-%s-%s.csv" % (sensor.name.replace(' ', '_').lower(), source.name.replace(' ', '_').lower(), cp),
                           index_col=0, parse_dates=[0], date_parser=lambda col: pd.to_datetime(col, utc=True) - timedelta(hours=tz_hour_difference),
                           nrows=n_events, usecols=cols)
@@ -88,14 +88,17 @@ def create_cp_data(df, first_belief_time, last_belief_time, start_time):
     temp_time = first_belief_time
     list_005 = []
     list_05 = []
-    list_95 = []
+    list_095 = []
     while temp_time <= last_belief_time:
         list_005  +=  [get_beliefsSeries_from_event_start(df, start_time, temp_time)[0]]
         list_05 +=  [get_beliefsSeries_from_event_start(df, start_time, temp_time)[1]]
-        list_95 +=  [get_beliefsSeries_from_event_start(df, start_time, temp_time)[2]]
- 
+        list_095 +=  [get_beliefsSeries_from_event_start(df, start_time, temp_time)[2]]
+        length = len(list_005)
+        if any(len(lst) != length for lst in [list_005, list_05, list_095]):
+            raise StandardError("Could not find all cumulative probability values")
         temp_time += df.sensor.event_resolution
-    return (list_005, list_05, list_95)
+
+    return (list_005, list_05, list_095)
 
 
 def get_beliefsSeries_from_event_start(df, datetime_object,current_time):
@@ -105,19 +108,17 @@ def get_beliefsSeries_from_event_start(df, datetime_object,current_time):
 
 def ridgeline_plot(date, df, start=0, end=168):
     """ 
-    Creates rigdeline plot 
+    Creates ridgeline plot by selecting a belief history about a specific event
 
-    @param date : datetime string
+    @param date : datetime string of selected event
     @param df : timely_beliefs DataFrame
     @param start : start of hours before event time
     @param end : end of hours before event time
     """
     if end < 0 or end > 168:
-        raise ValueException("End of the forecast horizon must be between 0 and 168 hours.")
+        raise ValueError("End of the forecast horizon must be between 0 and 168 hours.")
     if start < 0 or start > end:
-        raise ValueException("Start of the forecast horizon must be between 0 and 168 hours.")
-    start_index = start + 2
-    end_index = end + 2
+        raise ValueError("Start of the forecast horizon must be between 0 and 168 hours.")
 
     start_time = date
     first_belief_time = date - ((end-1)*df.sensor.event_resolution)
