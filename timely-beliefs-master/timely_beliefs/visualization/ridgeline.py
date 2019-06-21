@@ -32,7 +32,7 @@ def read_beliefs_from_csv(sensor, source, cp, event_resolution: timedelta, tz_ho
     horizons = list(range(0, 169, 1)) 
     cols.extend([h + 2 for h in horizons])
     n_horizons = 169
-    n_events = 400
+    n_events = None
     beliefs = pd.read_csv("%s-%s-%s.csv" % (sensor.name.replace(' ', '_').lower(), source.name.replace(' ', '_').lower(), cp),
                           index_col=0, parse_dates=[0], date_parser=lambda col: pd.to_datetime(col, utc=True) - timedelta(hours=tz_hour_difference),
                           nrows=n_events, usecols=cols)
@@ -77,7 +77,8 @@ def make_df(n_events = 100 , n_horizons = 169, tz_hour_difference=-9, event_reso
 
 def create_cp_data(df, start, end, start_time, fixedviewpoint):
     """
-    Returns 3 lists with values of different cumulative probabilities, from what 1 is 0.5 
+    Returns 3 lists with values of 2 different cumulative probabilities.
+    Solely 1 out of 3 is 0.5.
     
     @param df : DataFrame containing events, belief times, predictions and their cumulative probabilities of 0.05/0.5/0.95
     @param start : start of timedelta
@@ -97,28 +98,27 @@ def create_cp_data(df, start, end, start_time, fixedviewpoint):
         cp0 = bdf.iloc[0].name[2]
         cp1 = bdf.iloc[1].name[2]
         cp2 = bdf.iloc[2].name[2]
-    
+    cp_list = [cp0, cp1, cp2]
     list_0 = []
-    list_mean = []
+    list_1 = []
     list_2 = []
-    if 0.5 in [cp0, cp1, cp2]:
-        
+    if 0.5 in cp_list:
         i = 0
+        index = cp_list.index(0.5)
         for _, value in bdf.iterrows():
             i = i%3
             if i == 0:
                 list_0  += [value[0]]
             elif i == 1:
-                list_mean += [value[0]]
+                list_1 += [value[0]]
             elif i == 2:
                 list_2 += [value[0]]
             i += 1
-        return (cp0, cp2, list_0, list_mean, list_2)
+        cp_list.remove(0.5)
+        lists = [list_0, list_1, list_2]
+        mean_list = lists.pop(index)
+        return (cp_list, mean_list, lists[0], lists[1])
     raise ValueError("No mean cp value")
-
-def get_beliefsSeries_from_event_start(df, datetime_object,current_time):
-    return df.loc[(datetime_object.strftime("%m/%d/%Y, %H:%M:%S"),current_time.strftime("%m/%d/%Y, %H:%M:%S")),'event_value']
-
 
 
 def ridgeline_plot(start_time, df, start=0, end=168, fixedviewpoint = False):
@@ -140,11 +140,11 @@ def ridgeline_plot(start_time, df, start=0, end=168, fixedviewpoint = False):
         raise ValueError("Start of the forecast horizon must be between 0 and 168 hours.")
 
     end += 1
-    cp0, cp2, pred_temp_0, pred_temp_05, pred_temp_2 = create_cp_data(df,start,end,start_time,fixedviewpoint)
+    cp_list, pred_temp_05, pred_temp_0, pred_temp_2 = create_cp_data(df,start,end,start_time,fixedviewpoint)
     
     mean = np.array([float(i) for i in pred_temp_05])
-    sigma1 = np.array([(float(pred_temp_0[i])-float(pred_temp_05[i]))/(np.sqrt(2)*erfinv((2*cp0)-1)) for i in range(len(pred_temp_05))])
-    sigma2 = np.array([(float(pred_temp_2[i])-float(pred_temp_05[i]))/(np.sqrt(2)*erfinv((2*cp2)-1)) for i in range(len(pred_temp_05))])
+    sigma1 = np.array([(float(pred_temp_0[i])-float(pred_temp_05[i]))/(np.sqrt(2)*erfinv((2*cp_list[0])-1)) for i in range(len(pred_temp_05))])
+    sigma2 = np.array([(float(pred_temp_2[i])-float(pred_temp_05[i]))/(np.sqrt(2)*erfinv((2*cp_list[1])-1)) for i in range(len(pred_temp_05))])
     sigma = (sigma1+sigma2)/2
     show_plot(mean, sigma, start, end, fixedviewpoint)
 
@@ -166,10 +166,9 @@ def show_plot(mean, sigma, start, end, fixedviewpoint=False):
         frame["{}".format(i)] = stats.norm.pdf(x, mean[i], sigma[i])
 
     pallete = viridis(nr_lines)
- 
     
     if fixedviewpoint:
-        cats = list((frame.keys()))
+        cats = list(frame.keys())
     else:
         cats = list(reversed(frame.keys()))
     source = ColumnDataSource(data=dict(x=x)) 
@@ -190,14 +189,14 @@ def show_plot(mean, sigma, start, end, fixedviewpoint=False):
         y_ticks = list(np.arange(end, 0, -5)) 
         yaxis = LinearAxis(ticker=y_ticks)
         y_labels = list(np.arange(start, end, 5))
+        
     mapping_dict = {y_ticks[i]: str(y_labels[i]) for i in range(len(y_labels))}
     for i in range(nr_lines):
         if i not in mapping_dict:
             mapping_dict[i]=" "
     mapping_code = "var mapping = {};\n    return mapping[tick];\n    ".format(mapping_dict)
     
-    
-    
+
     p.yaxis.formatter = FuncTickFormatter(code=mapping_code)    
     
     p.outline_line_color = None
@@ -219,7 +218,7 @@ def show_plot(mean, sigma, start, end, fixedviewpoint=False):
 def ridge(category, data, scale=100):
     return list(zip([category] * len(data), scale * data))
 
-# df = make_df()
-# ridgeline_plot(datetime.datetime(2015, 3, 1, 9, 0, tzinfo=pytz.utc), df, end=150, fixedviewpoint=False)
-# ridgeline_plot(datetime.datetime(2015, 3, 1, 9, 0, tzinfo=pytz.utc), df, fixedviewpoint=True)
+df = make_df()
+ridgeline_plot(datetime.datetime(2015, 3, 1, 9, 0, tzinfo=pytz.utc), df, end=150, fixedviewpoint=False)
+ridgeline_plot(datetime.datetime(2015, 3, 1, 9, 0, tzinfo=pytz.utc), df, fixedviewpoint=True)
 
