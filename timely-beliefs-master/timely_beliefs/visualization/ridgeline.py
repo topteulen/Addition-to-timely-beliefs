@@ -32,7 +32,7 @@ def read_beliefs_from_csv(sensor, source, cp, event_resolution: timedelta, tz_ho
     horizons = list(range(0, 169, 1)) 
     cols.extend([h + 2 for h in horizons])
     n_horizons = 169
-    n_events = None
+    n_events = 400
     beliefs = pd.read_csv("%s-%s-%s.csv" % (sensor.name.replace(' ', '_').lower(), source.name.replace(' ', '_').lower(), cp),
                           index_col=0, parse_dates=[0], date_parser=lambda col: pd.to_datetime(col, utc=True) - timedelta(hours=tz_hour_difference),
                           nrows=n_events, usecols=cols)
@@ -73,68 +73,84 @@ def make_df(n_events = 100 , n_horizons = 169, tz_hour_difference=-9, event_reso
         blfs += read_beliefs_from_csv(sensor, source=source, cp=0.95, event_resolution=event_resolution, tz_hour_difference=tz_hour_difference)
 
         bdf = tb.BeliefsDataFrame(sensor=sensor, beliefs=blfs).sort_index()
-
     return bdf
 
-def create_cp_data(df, first_belief_time, last_belief_time, start_time):
+def create_cp_data(df, start, end, start_time, fixedviewpoint):
     """
-    Returns lists with values of 0.05, 0.5 and 0.95 cumulative probability
+    Returns 3 lists with values of different cumulative probabilities, from what 1 is 0.5 
     
-    @param df : DataFrame containing events, belief times, predictions and their cumulative probability
-    @param first_belief_time : first belief time 
-    @param last_belief_time : last belief time 
+    @param df : DataFrame containing events, belief times, predictions and their cumulative probabilities of 0.05/0.5/0.95
+    @param start : start of timedelta
+    @param end : end of timedelta
     @param start_time : time of event
+    @param fixedviewpoint : if true plot based on future predictions
     """
-    temp_time = first_belief_time
-    list_005 = []
-    list_05 = []
-    list_095 = []
-    while temp_time <= last_belief_time:
-        list_005  +=  [get_beliefsSeries_from_event_start(df, start_time, temp_time)[0]]
-        list_05 +=  [get_beliefsSeries_from_event_start(df, start_time, temp_time)[1]]
-        list_095 +=  [get_beliefsSeries_from_event_start(df, start_time, temp_time)[2]]
-        length = len(list_005)
-        if any(len(lst) != length for lst in [list_005, list_05, list_095]):
-            raise StandardError("Could not find all cumulative probability values")
-        temp_time += df.sensor.event_resolution
-
-    return (list_005, list_05, list_095)
-
+    if fixedviewpoint == True:
+        df = df[df.index.get_level_values("event_start") >= start_time]
+        bdf = df.fixed_viewpoint(start_time)
+        end = len(bdf)
+        cp0 = bdf.iloc[0].name[3]
+        cp1 = bdf.iloc[1].name[3]
+        cp2 = bdf.iloc[2].name[3]
+    else:
+        bdf = df.belief_history(event_start=start_time, belief_horizon_window=(timedelta(hours=start), timedelta(hours=end)))
+        cp0 = bdf.iloc[0].name[2]
+        cp1 = bdf.iloc[1].name[2]
+        cp2 = bdf.iloc[2].name[2]
+    
+    list_0 = []
+    list_mean = []
+    list_2 = []
+    if 0.5 in [cp0, cp1, cp2]:
+        
+        i = 0
+        for _, value in bdf.iterrows():
+            i = i%3
+            if i == 0:
+                list_0  += [value[0]]
+            elif i == 1:
+                list_mean += [value[0]]
+            elif i == 2:
+                list_2 += [value[0]]
+            i += 1
+        print("len = ", len(list_0))
+        return (cp0, cp2, list_0, list_mean, list_2)
+    raise ValueError("No mean cp value")
 
 def get_beliefsSeries_from_event_start(df, datetime_object,current_time):
     return df.loc[(datetime_object.strftime("%m/%d/%Y, %H:%M:%S"),current_time.strftime("%m/%d/%Y, %H:%M:%S")),'event_value']
 
 
 
-def ridgeline_plot(date, df, start=0, end=168):
+def ridgeline_plot(start_time, df, start=0, end=168, fixedviewpoint = False):
     """ 
     Creates ridgeline plot by selecting a belief history about a specific event
 
-    @param date : datetime string of selected event
+    @param start_time : datetime string of selected event
     @param df : timely_beliefs DataFrame
     @param start : start of hours before event time
     @param end : end of hours before event time
+    @param fixedviewpoint : if true create fixed viewpoint plot
     """
+    if fixedviewpoint == True:
+        start = 0
+        
     if end < 0 or end > 168:
         raise ValueError("End of the forecast horizon must be between 0 and 168 hours.")
     if start < 0 or start > end:
         raise ValueError("Start of the forecast horizon must be between 0 and 168 hours.")
 
-    start_time = date
-    first_belief_time = date - ((end-1)*df.sensor.event_resolution)
-    last_belief_time = date - ((start)*df.sensor.event_resolution)
-
-    pred_temp_005, pred_temp_05, pred_temp_095 = create_cp_data(df,first_belief_time,last_belief_time,start_time)
+    end += 1
+    cp0, cp2, pred_temp_0, pred_temp_05, pred_temp_2 = create_cp_data(df,start,end,start_time,fixedviewpoint)
     
     mean = np.array([float(i) for i in pred_temp_05])
-    sigma1 = np.array([(float(pred_temp_095[i])-float(pred_temp_05[i]))/(np.sqrt(2)*erfinv((2*0.95)-1)) for i in range(len(pred_temp_05))])
-    sigma2 = np.array([(float(pred_temp_005[i])-float(pred_temp_05[i]))/(np.sqrt(2)*erfinv((2*0.05)-1)) for i in range(len(pred_temp_05))])
+    sigma1 = np.array([(float(pred_temp_0[i])-float(pred_temp_05[i]))/(np.sqrt(2)*erfinv((2*cp0)-1)) for i in range(len(pred_temp_05))])
+    sigma2 = np.array([(float(pred_temp_2[i])-float(pred_temp_05[i]))/(np.sqrt(2)*erfinv((2*cp2)-1)) for i in range(len(pred_temp_05))])
     sigma = (sigma1+sigma2)/2
+    show_plot(mean, sigma, start, end, fixedviewpoint)
 
-    show_plot(mean, sigma, start, end)
 
-
-def show_plot(mean, sigma, start, end):
+def show_plot(mean, sigma, start, end, fixedviewpoint=False):
     """
     Creates and shows ridgeline plot
 
@@ -142,24 +158,51 @@ def show_plot(mean, sigma, start, end):
     @param sigma: list of sigma values
     @param start: start hours before event-time
     @param end: end hours before event-time
+    @param fixedviewpoint : if true create fixed viewpoint plot
     """
-    nr_lines = end - start
+    nr_lines = len(mean)
     x = np.linspace(-10, 30, 500)
     frame = pd.DataFrame()
     for i in range(nr_lines):
         frame["{}".format(i)] = stats.norm.pdf(x, mean[i], sigma[i])
-    cats = list(reversed(frame.keys()))
+
     pallete = viridis(nr_lines)
-    source = ColumnDataSource(data=dict(x=x))
-
-    p = figure(y_range=cats, plot_width=900, x_range=(-5, 30), toolbar_location=None)
-
+    print(nr_lines, end)
+ 
+    
+    if fixedviewpoint:
+        cats = list((frame.keys()))
+    else:
+        cats = list(reversed(frame.keys()))
+    source = ColumnDataSource(data=dict(x=x)) 
+    
+    p = figure(y_range=cats, plot_width=900, x_range=(-5, 30), toolbar_location=None)   
     for i, cat in enumerate(reversed(cats)):
         y = ridge(cat, frame[cat], 50)
         source.add(y, cat)
-        p.patch('x', cat, alpha=0.6, color=pallete[i], line_color="black", source=source)
+        p.patch('x', cat, alpha=0.6, color=pallete[i], line_color="black", source=source)        
         
-
+    if fixedviewpoint:
+        p.yaxis.axis_label = 'Number of hours after event_start'
+        y_ticks = list(np.arange(0, nr_lines, 5)) 
+        yaxis = LinearAxis(ticker=y_ticks)
+        y_labels = list((np.arange(0, nr_lines, 5)))
+    else:
+        p.yaxis.axis_label = 'Number of hours before event_start'
+        y_ticks = list(np.arange(end, 0, -5)) 
+        yaxis = LinearAxis(ticker=y_ticks)
+        y_labels = list(np.arange(start, end, 5))
+    mapping_dict = {y_ticks[i]: str(y_labels[i]) for i in range(len(y_labels))}
+    for i in range(nr_lines):
+        if i not in mapping_dict:
+            mapping_dict[i]=" "
+    print(y_ticks, y_labels, mapping_dict)
+    mapping_code = "var mapping = {};\n    return mapping[tick];\n    ".format(mapping_dict)
+    
+    
+    
+    p.yaxis.formatter = FuncTickFormatter(code=mapping_code)    
+    
     p.outline_line_color = None
     p.background_fill_color = "#ffffff"
 
@@ -173,18 +216,6 @@ def show_plot(mean, sigma, start, end):
     p.axis.axis_line_color = None
 
     p.y_range.range_padding = 0.2 / (nr_lines / 168)
-    
-    p.yaxis.axis_label = 'Number of hours before event-time'
-    y_ticks = list(np.arange(end, 0, -5)) 
-    yaxis = LinearAxis(ticker=y_ticks)
-    
-    y_labels = list(np.arange(start, end, 5))
-    mapping_dict = {y_ticks[i]: str(y_labels[i]) for i in range(len(y_labels))}
-    for i in range(end+1):
-        if i not in mapping_dict:
-            mapping_dict[i]=" "
-    mapping_code = "var mapping = {};\n    return mapping[tick];\n    ".format(mapping_dict)
-    p.yaxis.formatter = FuncTickFormatter(code=mapping_code)    
     show(p)
 
 
@@ -192,5 +223,6 @@ def ridge(category, data, scale=100):
     return list(zip([category] * len(data), scale * data))
 
 # df = make_df()
-# ridgeline_plot(datetime.datetime(2015, 3, 1, 9, 0, tzinfo=pytz.utc), df)
+# ridgeline_plot(datetime.datetime(2015, 3, 1, 9, 0, tzinfo=pytz.utc), df, end=150, fixedviewpoint=False)
+# ridgeline_plot(datetime.datetime(2015, 3, 1, 9, 0, tzinfo=pytz.utc), df, fixedviewpoint=True)
 
