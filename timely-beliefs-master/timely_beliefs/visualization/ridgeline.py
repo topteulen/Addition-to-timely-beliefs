@@ -218,7 +218,7 @@ def show_plot(mean, sigma, start, end, fixedviewpoint=False):
 def ridge(category, data, scale=100):
     return list(zip([category] * len(data), scale * data))
 
-df = make_df()
-ridgeline_plot(datetime.datetime(2015, 3, 1, 9, 0, tzinfo=pytz.utc), df, end=150, fixedviewpoint=False)
-ridgeline_plot(datetime.datetime(2015, 3, 1, 9, 0, tzinfo=pytz.utc), df, fixedviewpoint=True)
+# df = make_df()
+# ridgeline_plot(datetime.datetime(2015, 3, 1, 9, 0, tzinfo=pytz.utc), df, end=150, fixedviewpoint=False)
+# ridgeline_plot(datetime.datetime(2015, 3, 1, 9, 0, tzinfo=pytz.utc), df, fixedviewpoint=True)
 
