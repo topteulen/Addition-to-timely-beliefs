@@ -113,7 +113,6 @@ def create_cp_data(df, start, end, start_time, fixedviewpoint):
             elif i == 2:
                 list_2 += [value[0]]
             i += 1
-        print("len = ", len(list_0))
         return (cp0, cp2, list_0, list_mean, list_2)
     raise ValueError("No mean cp value")
 
@@ -167,7 +166,6 @@ def show_plot(mean, sigma, start, end, fixedviewpoint=False):
         frame["{}".format(i)] = stats.norm.pdf(x, mean[i], sigma[i])
 
     pallete = viridis(nr_lines)
-    print(nr_lines, end)
  
     
     if fixedviewpoint:
@@ -196,7 +194,6 @@ def show_plot(mean, sigma, start, end, fixedviewpoint=False):
     for i in range(nr_lines):
         if i not in mapping_dict:
             mapping_dict[i]=" "
-    print(y_ticks, y_labels, mapping_dict)
     mapping_code = "var mapping = {};\n    return mapping[tick];\n    ".format(mapping_dict)
     
     
