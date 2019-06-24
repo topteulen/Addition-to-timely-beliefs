@@ -11,9 +11,9 @@ def cal_pop_fitness(equation_inputs, pop, real_value):
 	x = equation_inputs
 	for i in range(len(pop)):
 		fitness += [[]]
-		for j in range(len(equation_inputs)):
+		for j in range(len(equation_inputs)-48):
 			guess = x[j][0]*w[i][0] + x[j][1]*w[i][1] + x[j][2]*w[i][2] + x[j][3]*w[i][3] + x[j][4]*w[i][4] + x[j][5]*w[i][5] +w[i][6]*np.sin((1/3.82)*x[j][6])
-			fitness[i] +=  [-((guess - float(real_value[j]))**2)]
+			fitness[i] +=  [-((guess - float(real_value[j+48]))**2)]
 
 	fitness = np.mean(fitness, axis=1)
 	return fitness
@@ -81,7 +81,7 @@ Genetic algorithm parameters:
 """
 sol_per_pop = 100
 num_parents_mating = 50
-num_generations = 150
+num_generations = 100
 mutation_prob = 0.4
 pop_size = (sol_per_pop,num_weights)
 offspring_size = (sol_per_pop-num_parents_mating)
@@ -145,25 +145,48 @@ print("best weights", w)
 print("best guess is:" ,result[:10])
 print("real value was:", real_value[:10])
 
-newresult = []
-newreal_value = []
-correct = 0
-correct_1 = 0
-correct_2 = 0
-for i in range(len(result)):
-	if i%100 == 0:
-		newresult += [round(result[i],2)]
-		newreal_value += [round(float(real_value[i]),2)]
-	if round(result[i],2) == round(float(real_value[i]),2):
-		correct_2 += 1
-	if round(result[i],1) == round(float(real_value[i]),1):
-		correct_1 += 1
-	if int(result[i]) == round(float(real_value[i]),0):
-		correct += 1
-print('acc',correct/len(result)*100)
-print('acc_1',correct_1/len(result)*100)
-print('acc_2',correct_2/len(result)*100)
 
-plt.scatter(range(len(newresult)),newresult,color="blue")
-plt.scatter(range(len(newreal_value)),newreal_value,color="red")
-plt.show()
+def accuracy_test(w,x,real_value,horizon):
+	# if horizon > 0:
+	# 	result = []
+	# 	for j in range(len(x)):
+	# 		for i in range(horizon):
+	# 			tempresult = x[j][0]*w[0] + x[j][1]*w[1] + x[j][2]*w[2] + x[j][3]*w[3] + x[j][4]*w[4] + x[j][5]*w[5] +w[6]*np.sin((1/3.82)*x[j][6])
+	# 			x[j][0] = x[j][1]
+	# 			x[j][1] = x[j][2]
+	# 			x[j][2] = x[j][3]
+	# 			x[j][3] = x[j][4]
+	# 			x[j][4] = x[j][5]
+	# 			x[j][5] = x[j][6]
+	# 			x[j][6] = tempresult
+	# 		result += [x[j][0]*w[0] + x[j][1]*w[1] + x[j][2]*w[2] + x[j][3]*w[3] + x[j][4]*w[4] + x[j][5]*w[5] +w[6]*np.sin((1/3.82)*x[j][6])]
+	# else:
+	# 	result = []
+	# 	for j in range(len(x)):
+	# 		result += [x[j][0]*w[0] + x[j][1]*w[1] + x[j][2]*w[2] + x[j][3]*w[3] + x[j][4]*w[4] + x[j][5]*w[5] +w[6]*np.sin((1/3.82)*x[j][6])]
+
+	newresult = []
+	newreal_value = []
+	correct = 0
+	correct_1 = 0
+	correct_2 = 0
+	for i in range(len(result)-horizon):
+		if i%100 == 0:
+			newresult += [round(result[i],2)]
+			newreal_value += [round(float(real_value[i+horizon]),2)]
+		if round(result[i],2) == round(float(real_value[i+horizon]),2):
+			correct_2 += 1
+		if round(result[i],1) == round(float(real_value[i+horizon]),1):
+			correct_1 += 1
+		if int(result[i]) == round(float(real_value[i+horizon]),0):
+			correct += 1
+	print('acc_0',correct/len(result)*100)
+	print('acc_1',correct_1/len(result)*100)
+	print('acc_2',correct_2/len(result)*100)
+
+	plt.scatter(range(len(newresult)),newresult,color="blue")
+	plt.scatter(range(len(newreal_value)),newreal_value,color="red")
+	plt.show()
+
+test = [-1.5168548,0.46305734,-2.54924472,10.76437678,-3.67868845,-2.47550853,0.30849161]
+accuracy_test(w,x,real_value,48)
