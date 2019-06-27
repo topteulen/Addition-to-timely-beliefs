@@ -51,7 +51,7 @@ These visuals are created simply by calling the plot method on our BeliefsDataFr
       1. [Table creation and session](#table-creation-and-session)
       1. [Subclassing](#subclassing)
 1. [Accuracy](#accuracy)
-1. [Generating new forecasts](#generate)
+1. [Generating new forecasts](#generating-new-forecasts)
 1. [Visualisation](#visualisation)
 1. [More examples](#more-examples)
 
