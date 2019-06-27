@@ -51,6 +51,7 @@ These visuals are created simply by calling the plot method on our BeliefsDataFr
       1. [Table creation and session](#table-creation-and-session)
       1. [Subclassing](#subclassing)
 1. [Accuracy](#accuracy)
+1. [Generating new forecasts](#generate)
 1. [Visualisation](#visualisation)
 1. [More examples](#more-examples)
 
@@ -434,6 +435,9 @@ With a fixed viewpoint, you get the accuracy of beliefs held at a certain `belie
     source
     Source A    0.00000  0.000000  0.000000
     Source B  125.85325  0.503413  0.503413
+
+## Generating new forecasts
+
 
 ## Visualisation
 
