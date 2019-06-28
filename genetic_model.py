@@ -94,7 +94,7 @@ for i in range(len(data)):
     if i >= history_size+1:
         newdata += [[]]
         newdata[i-(history_size+1)] += [float(data[i-((history_size+1)-j)][-1]) for j in range(history_size)]
-
+print(newdata[0])
 real_value = temps[:int(len(temps)*0.5)]
 equation_inputs = newdata[:int(len(temps)*0.5)]
 for generation in range(num_generations):

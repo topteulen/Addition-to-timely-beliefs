@@ -12,7 +12,7 @@ def cal_pop_fitness(equation_inputs, pop, real_value):
 	for i in range(len(pop)):
 		fitness += [[]]
 		for j in range(len(equation_inputs)-48):
-			guess = 1/6*x[j][0]*w[i][0] + 1/6*x[j][1]*w[i][1] + 1/6*x[j][2]*w[i][2] + 1/6*x[j][3]*w[i][3] + 1/6*x[j][4]*w[i][4] + 1/6*x[j][5]*w[i][5] + w[i][6]*np.sin((1/3.82)*x[j][6]+w[i][7]) + x[j][7]*w[i][8]
+			guess = 1/6*x[j][0]*w[i][0] + 1/6*x[j][1]*w[i][1] + 1/6*x[j][2]*w[i][2] + 1/6*x[j][3]*w[i][3] + 1/6*x[j][4]*w[i][4] + 1/6*x[j][5]*w[i][5] + w[i][6]*np.sin((1/3.82)*x[j][6]+w[i][7]) + -(1/w[i][8])*(x[j][7]-6)**2+w[i][9]
 			fitness[i] +=  [-((guess - float(real_value[j+48]))**2)]
 
 	fitness = np.mean(fitness, axis=1)
@@ -50,9 +50,11 @@ def mutation(offspring,generation,mutation_prob):
 			if np.random.random() <= mutation_prob:
 				random_value = np.random.uniform(-5.0,5.0)
 				if generation > 50:
-					random_value = np.random.uniform(-1.0,1.0)
+					random_value = np.random.uniform(-2.0,2.0)
 				if generation > 100:
-					random_value = np.random.uniform(-0.2,0.2)
+					random_value = np.random.uniform(-1.0,1.0)
+				if generation > 125:
+					random_value = np.random.uniform(-0.4,0.4)
 				#np.random.uniform(-(generation/100)/np.sqrt(1+generation**2)-1, 1-(generation/100)/np.sqrt(1+(generation/100)**2))
 				random_list += [random_value]
 				offspring[i][j] = offspring[i][j] + random_value
@@ -74,20 +76,20 @@ The y=target is to maximize this equation ASAP:
 #x1*w1 + x2*w2 + x3*w3 + x4*w4 + x5*w5 + x6*w6 = y
 
 # Number of the weights we are looking to optimize.
-num_weights = 9
+num_weights = 10
 
 """
 Genetic algorithm parameters:
     Mating pool size
     Population size
 """
-sol_per_pop = 100
-num_parents_mating = 40
+sol_per_pop = 110
+num_parents_mating = 60
 num_generations = 150
-mutation_prob = 0.8
+mutation_prob = 1
 pop_size = (sol_per_pop,num_weights)
 offspring_size = (sol_per_pop-num_parents_mating)
-new_population = np.random.uniform(low=-8.0, high=8.0, size=pop_size)
+new_population = np.random.uniform(low=-10.0, high=10.0, size=pop_size)
 
 with open('energy_data.csv') as csv_file:
     csv_reader = csv.reader(csv_file,delimiter=',')
@@ -95,20 +97,20 @@ with open('energy_data.csv') as csv_file:
 
 data = np.array(data)
 temps = data[:,-1]
-history_size = num_weights
+history_size = num_weights-3
 newdata = []
 for i in range(len(data)):
-	if i >= history_size+1:
+	if i >= history_size*48+1:
 		newdata += [[]]
-		newdata[i-(history_size+1)] += [float(data[(i-history_size)+j][-1]) for j in range(history_size)]
-		months = int(data[i][0][5:7])
-		hours = int(data[i][0][11:13])
-		mins = int(data[i][0][14:16])
-		newdata[i-(history_size+1)] += [hours+mins/60]
-		newdata[i-(history_size+1)] += [months]
-real_value = temps[:int(len(temps)*0.5)]
-equation_inputs = newdata[:int(len(temps)*0.5)]
-
+		newdata[i-(history_size*48+1)] += [float(data[(i-history_size*48+1)+j*48][-1]) for j in range(history_size)]
+		months = int(data[i-history_size*48+1][0][5:7])
+		hours = int(data[i-history_size*48+1][0][11:13])
+		mins = int(data[i-history_size*48+1][0][14:16])
+		newdata[i-(history_size*48+1)] += [(hours+12+mins/60)%24]
+		newdata[i-(history_size*48+1)] += [months]
+real_value = temps[:int(len(temps)*0.7)]
+equation_inputs = newdata[:int(len(temps)*0.7)]
+print(newdata[0])
 for generation in range(num_generations):
 	print("Generation : ", generation)
 	# Measing the fitness of each chromosome in the population.
@@ -143,7 +145,7 @@ real_value = temps[int(len(temps)*0.7):]
 w = new_population[best_match_idx]
 result = []
 for j in range(len(x)):
-	result += [1/6*x[j][0]*w[0] + 1/6*x[j][1]*w[1] + 1/6*x[j][2]*w[2] + 1/6*x[j][3]*w[3] + 1/6*x[j][4]*w[4] + 1/6*x[j][5]*w[5] +w[6]*np.sin((1/3.82)*x[j][6]+w[7]) + x[j][7]*w[8]]
+	result += [1/6*x[j][0]*w[0] + 1/6*x[j][1]*w[1] + 1/6*x[j][2]*w[2] + 1/6*x[j][3]*w[3] + 1/6*x[j][4]*w[4] + 1/6*x[j][5]*w[5] +w[6]*np.sin((1/3.82)*x[j][6]+w[7]) + -(1/w[8])*(x[j][7]-6)**2+w[9]]
 print("best weights", w)
 print("best guess is:" ,result[:10])
 print("real value was:", real_value[:10])
@@ -173,7 +175,6 @@ def accuracy_test(w,x,real_value,horizon,result):
 	correct = 0
 	correct_1 = 0
 	correct_2 = 0
-	print(result)
 	for i in range(len(result)-horizon):
 		if i%100 == 0:
 			newresult += [round(result[i],2)]
@@ -184,6 +185,11 @@ def accuracy_test(w,x,real_value,horizon,result):
 			correct_1 += 1
 		if int(result[i]) == round(float(real_value[i+horizon]),0):
 			correct += 1
+	fitness = 0
+	for i in range(len(result)-horizon):
+		fitness +=  -((result[i] - float(real_value[i+horizon]))**2)
+
+	print('fitness',fitness/len(result)-horizon)
 	print('acc_0',correct/len(result)*100)
 	print('acc_1',correct_1/len(result)*100)
 	print('acc_2',correct_2/len(result)*100)
@@ -192,5 +198,4 @@ def accuracy_test(w,x,real_value,horizon,result):
 	plt.scatter(range(len(newreal_value)),newreal_value,color="red")
 	plt.show()
 
-test = [-1.5168548,0.46305734,-2.54924472,10.76437678,-3.67868845,-2.47550853,0.30849161]
 accuracy_test(w,x,real_value,48,result)
