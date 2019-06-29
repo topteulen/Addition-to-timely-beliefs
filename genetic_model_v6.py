@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 from math import sin
 
 def cal_pop_fitness(equation_inputs, pop, real_value):
-    """
-    Calculates fitness of a given population.
-    @param list of floats : Data used to calcuate the function
-    @param list of lists of floats : weights for each individual of the population
-    @param list of floats: the result values.
+	"""
+	Calculates fitness of a given population.
+	@param list of floats : Data used to calcuate the function
+	@param list of lists of floats : weights for each individual of the population
+	@param list of floats: the result values.
 	@return list of negative floats : fitness of each individual in the population
-    """
+	"""
 	#Setting input to x and w.
 	fitness = []
 	w = pop
@@ -26,13 +26,13 @@ def cal_pop_fitness(equation_inputs, pop, real_value):
 	return fitness
 
 def select_mating_pool(pop, fitness, num_parents):
-    """
-    Selects the most fit parents for mating.
-    @param list of lists of floats : weights for each individual of the population
-    @param list of negative floats : fitness of each individual in the population
-    @param int : amount of parents that get selected
+	"""
+	Selects the most fit parents for mating.
+	@param list of lists of floats : weights for each individual of the population
+	@param list of negative floats : fitness of each individual in the population
+	@param int : amount of parents that get selected
 	@return list of lists of floats : weights for each individual of the selected parents.
-    """
+	"""
 	#Make parent array.
 	parents = np.empty((num_parents, pop.shape[1]))
 	#Select highest fitness parents in the population.
@@ -43,13 +43,13 @@ def select_mating_pool(pop, fitness, num_parents):
 	return parents
 
 def crossover(parents, offspring_size,num_weights):
-    """
-    Takes the genes of the selected parents and mixes them together. Also know as sex.
-    @param list of lists of floats : weights for each individual of the selected parents.
-    @param int: amount of children to create.
-    @param int: amount of genes each parent has.
+	"""
+	Takes the genes of the selected parents and mixes them together. Also know as sex.
+	@param list of lists of floats : weights for each individual of the selected parents.
+	@param int: amount of children to create.
+	@param int: amount of genes each parent has.
 	@return list of lists of floats :  weights for each individual of the born children.
-    """
+	"""
 	#Make offspring array.
 	offspring = np.empty((offspring_size,num_weights))
 	#Point where genes are split.
@@ -65,13 +65,13 @@ def crossover(parents, offspring_size,num_weights):
 	return offspring
 
 def mutation(offspring,generation,mutation_prob):
-    """
-    Changes the values of the genes of the born children randomly.
-    @param list of lists of floats :  weights for each individual of the born children.
-    @param int: current generation.
-    @param float where 0.0 <= x <= 1.0 is True: probability of a mutation
+	"""
+	Changes the values of the genes of the born children randomly.
+	@param list of lists of floats :  weights for each individual of the born children.
+	@param int: current generation.
+	@param float where 0.0 <= x <= 1.0 is True: probability of a mutation
 	@return list of lists of floats :  weights for each individual of the born children.
-    """
+	"""
 	random_list = []
 	# Mutation changes a single gene in each offspring randomly.
 	for i in range(offspring.shape[0]):
@@ -93,9 +93,9 @@ def mutation(offspring,generation,mutation_prob):
 	return offspring
 
 def accuracy_test(real_value,horizon,result):
-    """
-    Result printer/ accuracy calculating function.
-    @param list of floats: actual measurements of the data.
+	"""
+	Result printer/ accuracy calculating function.
+	@param list of floats: actual measurements of the data.
 	@param int: horizon of how far in the future is being predicted.
 	@param list of floats: predicted results of the data.
 	@return float: WAPE accuracy score.
@@ -140,15 +140,15 @@ def accuracy_test(real_value,horizon,result):
 	plt.close()
 	return wape
 
-def main(horizon,num_weights = 8,sol_per_pop = 100,num_parents_mating = 40,mutation_prob = 0.9):
-    """
-    Main function of the genetic algorithm. This contains all the function calls
+def main(horizon,num_weights = 8,sol_per_pop = 100,num_parents_mating = 40,mutation_prob = 0.9,num_generations=200):
+	"""
+	Main function of the genetic algorithm. This contains all the function calls
 	and parameter initializations.
-    @param df : BeliefsDataframe containing all necessary data.
-    @param beliefSeries : BeliefSeries object.
-    @param model : model to use to generate new data.
+	@param df : BeliefsDataframe containing all necessary data.
+	@param beliefSeries : BeliefSeries object.
+	@param model : model to use to generate new data.
 	@return float: WAPE accuracy score.
-    """
+	"""
 	#History_size is the size of the linear porition of the formula.
 	history_size = num_weights-3
 	#Pop_size is parents*genes of each parent.
