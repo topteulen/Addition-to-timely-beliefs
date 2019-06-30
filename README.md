@@ -36,12 +36,12 @@ An example of the former can be seen below, this can be created by;
 
     >>> df = make_df()
     >>> ridgeline_plot(datetime.datetime(2015, 3, 1, 9, 0, tzinfo=pytz.utc), df, fixedviewpoint=True)
-    
-![Ridgeline fixed viewpoint](timely_beliefs/docs/fixed_viewpoint_ridgeline.png "Fixed viewpoint")
+![Ridgeline plot with fixed viewpoint](timely-beliefs-master/timely_beliefs/docs/fixed_viewpoint_ridgeline.png)
+
 
 The latter can be created using;
 
     >>> df = make_df()
     >>> ridgeline_plot(datetime.datetime(2015, 3, 1, 9, 0, tzinfo=pytz.utc), df, end=150, fixedviewpoint=False)
     
-![Ridgeline belief history](timely_beliefs/docs/belief_history_ridgeline.png "Belief history")
+![Ridgeline plot with belief history](timely-beliefs-master/timely_beliefs/docs/belief_history_ridgeline.png)
